@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart'; // Ensure this import is present
 
-// This is a conceptual widget structure.
-// You'll integrate this into your existing widget tree.
-// Make sure '_controller' is a valid, initialized VideoPlayerController.
-
 class ConstrainedVideoPlayer extends StatelessWidget {
   final VideoPlayerController controller;
+  final double maxHeight;
 
-  final dynamic maxHeight;
-
-  const ConstrainedVideoPlayer({super.key, required this.controller, required this.maxHeight});
+  const ConstrainedVideoPlayer({
+    Key? key,
+    required this.controller,
+    this.maxHeight = 200.0, // Default maxHeight if not provided
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // It's crucial that the controller is initialized before accessing its value.
-    // You should handle loading/error states appropriately in a real app.
     if (!controller.value.isInitialized) {
-      // Return a placeholder or loading indicator if the controller isn't ready.
       return Container(
+        // For the placeholder, we might still want it to be discernible.
+        // You can choose to make it screen width or also constrained.
+        // Here, we'll use maxHeight and let its width be determined by a common placeholder aspect ratio like 16/9,
+        // but still constrained by screen width.
         width: MediaQuery.of(context).size.width,
-        height: 200, // Max height
-        color: Colors.black, // Placeholder background
+        height: maxHeight,
+        color: Colors.black,
         child: const Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -30,12 +30,10 @@ class ConstrainedVideoPlayer extends StatelessWidget {
       );
     }
 
-    // Get the video's aspect ratio from the controller.
-    // Ensure this value is valid (e.g., > 0) to prevent layout errors.
     final double videoAspectRatio = controller.value.aspectRatio;
 
-    // Defensive check for invalid aspect ratio
     if (videoAspectRatio <= 0) {
+      // Similar placeholder sizing for error state
       return Container(
         width: MediaQuery.of(context).size.width,
         height: maxHeight,
@@ -49,23 +47,26 @@ class ConstrainedVideoPlayer extends StatelessWidget {
       );
     }
 
+    // This is the main change:
+    // The outer Container no longer has a fixed width: MediaQuery.of(context).size.width.
+    // Instead, it uses BoxConstraints for both maxWidth and maxHeight.
+    // The AspectRatio child will then size itself according to its own aspectRatio,
+    // fitting within these constraints. The Container will then wrap the AspectRatio.
     return Container(
-      // 1. Set the width to the full screen width.
-      width: MediaQuery.of(context).size.width,
-      // 2. Apply constraints: specifically, a maximum height.
-      constraints: const BoxConstraints(
-        maxHeight: 200.0,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width, // Video cannot be wider than the screen
+        maxHeight: maxHeight, // Video cannot be taller than maxHeight
       ),
-      // Optional: Add a background color to the container for debugging or styling.
-      // color: Colors.grey[300],
+      // Optional: Add a background color to see the bounds of this container
+      // color: Colors.grey.withOpacity(0.5),
       child: AspectRatio(
-        // 3. Use the video's intrinsic aspect ratio.
-        // The AspectRatio widget will now work within the bounds
-        // defined by the parent Container (full width, max 200 height).
         aspectRatio: videoAspectRatio,
         child: VideoPlayer(controller),
       ),
     );
+    // If you want this ConstrainedVideoPlayer to be centered on the screen
+    // when it's narrower than the screen, you would wrap its usage in a Center widget:
+    // Center(child: ConstrainedVideoPlayer(controller: _controller, maxHeight: 200))
   }
 }
 
@@ -76,19 +77,19 @@ class ConstrainedVideoPlayer extends StatelessWidget {
 // @override
 // void initState() {
 //   super.initState();
+//   // Example with a typically narrow/vertical aspect ratio video URL
 //   _myVideoController = VideoPlayerController.networkUrl(
-//     Uri.parse('YOUR_VIDEO_URL_HERE'), // Replace with your video URL
+//     // Replace with a URL of a known NARROW/VERTICAL video for testing
+//     Uri.parse('YOUR_NARROW_VERTICAL_VIDEO_URL_HERE'),
 //   )..initialize().then((_) {
-//       // Ensure the first frame is shown after the video is initialized,
-//       // and trigger a rebuild.
 //       setState(() {});
-//       _myVideoController.play(); // Optionally start playing
+//       // Verify the reported aspect ratio:
+//       print("Video Initialized. Aspect Ratio: ${_myVideoController.value.aspectRatio}");
+//       // For a 9:16 video, aspect ratio should be 9/16 = 0.5625
+//       // _myVideoController.play();
 //     }).catchError((error) {
-//       // Handle initialization errors
 //       print("Error initializing video player: $error");
-//       setState(() {
-//         // You might want to set a flag to show an error message in the UI
-//       });
+//       setState(() {});
 //     });
 // }
 //
@@ -97,25 +98,33 @@ class ConstrainedVideoPlayer extends StatelessWidget {
 //   return Scaffold(
 //     appBar: AppBar(title: const Text('Video Player Example')),
 //     body: Column(
+//       mainAxisAlignment: MainAxisAlignment.start,
 //       children: [
-//         // Other widgets can go here
+//         const Padding(
+//           padding: EdgeInsets.all(8.0),
+//           child: Text("Below is the ConstrainedVideoPlayer. If the video is narrow, the widget itself should also be narrow and centered (due to the Center widget in this example)."),
+//         ),
 //         if (_myVideoController.value.isInitialized)
-//           ConstrainedVideoPlayer(controller: _myVideoController)
+//           Center( // Center the ConstrainedVideoPlayer if it's narrower than the screen
+//             child: ConstrainedVideoPlayer(
+//               controller: _myVideoController,
+//               maxHeight: 300.0, // Example maxHeight
+//             ),
+//           )
 //         else if (_myVideoController.value.hasError)
 //            Container(
 //              width: MediaQuery.of(context).size.width,
-//              height: 200,
+//              height: 300.0, // Match example maxHeight
 //              color: Colors.black,
 //              child: const Center(child: Text("Error loading video", style: TextStyle(color: Colors.white)))
 //            )
 //         else
-//           Container( // Placeholder while loading
+//           Container(
 //             width: MediaQuery.of(context).size.width,
-//             height: 200,
+//             height: 300.0, // Match example maxHeight
 //             color: Colors.black,
 //             child: const Center(child: CircularProgressIndicator()),
 //           ),
-//         // Other widgets can go here
 //       ],
 //     ),
 //   );

@@ -1,9 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:easy_video_editor/easy_video_editor.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:vidvidvid/screens/start.dart';
 
 void main() => runApp(VidVidVidApp());
@@ -15,7 +10,18 @@ class VidVidVidApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'VidVidVidApp',
-      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      theme: ThemeData(
+        // Set useMaterial3 to true to opt into Material Design 3
+        useMaterial3: true,
+        // Define the color scheme from a seed color
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color.fromARGB(244, 105, 76, 0), // Your primary seed color
+          // You can optionally override specific colors in the generated scheme
+          // primary: Colors.deepPurple, // If you want to be very specific
+          // secondary: Colors.amber,
+          brightness: Brightness.light, // Or Brightness.dark for a dark theme base
+        ),
+      ),
       home: StartScreen(),
     );
   }

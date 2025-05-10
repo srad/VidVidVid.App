@@ -4,13 +4,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:easy_video_editor/easy_video_editor.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:easy_video_editor/easy_video_editor.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-
 class MergePage extends StatefulWidget {
   @override
   _MergePageState createState() => _MergePageState();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:vidvidvid/screens/cut.dart';
 import 'package:vidvidvid/screens/merge.dart';
 import 'package:vidvidvid/screens/split.dart';
+import 'package:vidvidvid/widgets/feature_button.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -16,61 +17,25 @@ class StartScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _featureButton(
-              context,
+            FeatureButton(
               title: 'Cut Video',
               icon: Icons.content_cut,
-              color: Colors.redAccent,
-              page: CutPage(),
+              color: Colors.deepPurple,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CutPage())), //
             ),
             SizedBox(height: 24),
-            _featureButton(
-              context,
+            FeatureButton(
               title: 'Merge Videos',
               icon: Icons.video_call,
               color: Colors.teal,
-              page: MergePage(),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MergePage())), //
             ),
             SizedBox(height: 24),
-            _featureButton(
-              context,
+            FeatureButton(
               title: 'Split Video',
               icon: Icons.call_split,
-              color: Colors.orange,
-              page: SplitPage(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _featureButton(BuildContext context,
-      {required String title,
-        required IconData icon,
-        required Color color,
-        required Widget page}) {
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color, width: 2),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 48),
-            SizedBox(width: 20),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
+              color: Colors.deepOrangeAccent,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SplitPage())), //
             ),
           ],
         ),
