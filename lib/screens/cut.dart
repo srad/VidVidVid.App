@@ -10,7 +10,7 @@ import 'package:easy_video_editor/easy_video_editor.dart'; // Main import
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:vidvidvid/screens/video_picker.dart';
+import 'package:vidvidvid/utils/file_utils.dart';
 import 'package:vidvidvid/widgets/constrained_video_player.dart';
 import 'package:vidvidvid/widgets/feature_button.dart';
 
@@ -59,6 +59,7 @@ class _CutPageState extends State<CutPage> {
   bool _isMuted = false;
   bool _isInitialized = false;
   String _exportProgressMessage = "";
+  double _progress = 0;
 
   List<String> _thumbnailPaths = [];
   bool _generatingThumbnails = false;
@@ -144,7 +145,7 @@ class _CutPageState extends State<CutPage> {
 
     //FilePickerResult? result =
     //await FilePicker.platform.pickFiles(type: FileType.video);
-    final file = await Navigator.of(context).push<File>(MaterialPageRoute(builder: (context) => const VideoPickerScreen()));
+    final file = await FileUtils.pickVideo(context);
 
     if (file != null && file.path != null) {
       _videoFile = File(file.path!);
@@ -211,7 +212,7 @@ class _CutPageState extends State<CutPage> {
           await file.delete();
         }
       } catch (e) {
-        print("Error deleting thumbnail file $path: $e");
+        debugPrint("Error deleting thumbnail file $path: $e");
       }
     }
   }
@@ -249,14 +250,14 @@ class _CutPageState extends State<CutPage> {
           }
         }
       } catch (e) {
-        print('Error generating thumbnail $i at ${actualPositionMs}ms: $e');
+        debugPrint('Error generating thumbnail $i at ${actualPositionMs}ms: $e');
       }
     }
     if (mounted) {
       setState(() {
-      _generatingThumbnails = false;
-      _screenState = CutPageState.ready;
-    });
+        _generatingThumbnails = false;
+        _screenState = CutPageState.ready;
+      });
     }
   }
 
@@ -462,6 +463,7 @@ class _CutPageState extends State<CutPage> {
     }
 
     setState(() {
+      _progress = 0;
       setState(() => _screenState = CutPageState.exporting);
       _exportProgressMessage = "Starting export...";
     });
@@ -503,6 +505,7 @@ class _CutPageState extends State<CutPage> {
             onProgress: (progress) {
               if (mounted) {
                 setState(() {
+                  _progress = progress;
                   _exportProgressMessage = 'Cutting segment ${i + 1}/${_selectedSegments.length}: ${(progress * 100).toStringAsFixed(0)}%';
                 });
               }
@@ -539,7 +542,7 @@ class _CutPageState extends State<CutPage> {
           await File(cutSegmentPaths.first).copy(finalOutputPath);
           finalExportedPath = finalOutputPath;
         } catch (e, s) {
-          print('Error copying single segment: $e\n$s');
+          debugPrint('Error copying single segment: $e\n$s');
           _showFeedback('Error saving single segment: $e');
         }
       } else {
@@ -555,13 +558,14 @@ class _CutPageState extends State<CutPage> {
             onProgress: (progress) {
               if (mounted) {
                 setState(() {
+                  _progress = progress;
                   _exportProgressMessage = 'Merging segments: ${(progress * 100).toStringAsFixed(0)}%';
                 });
               }
             },
           );
         } catch (e, s) {
-          print('Error during merge export: $e\n$s');
+          debugPrint('Error during merge export: $e\n$s');
           _showFeedback('Failed to merge videos: $e.');
         }
       }
@@ -574,7 +578,7 @@ class _CutPageState extends State<CutPage> {
         }
       }
     } catch (e, s) {
-      print('Overall Export error: $e\n$s');
+      debugPrint('Overall Export error: $e\n$s');
       _showFeedback('Export failed: $e');
     } finally {
       if (tempDir != null && await tempDir.exists()) {
@@ -584,7 +588,7 @@ class _CutPageState extends State<CutPage> {
             try {
               await tempFile.delete();
             } catch (e) {
-              print("Error deleting temp segment file $path: $e");
+              debugPrint("Error deleting temp segment file $path: $e");
             }
           }
         }
@@ -624,11 +628,12 @@ class _CutPageState extends State<CutPage> {
       case CutPageState.start:
         _pickVideo();
       case CutPageState.idle:
-      body = Center(
-          child: Padding(padding: EdgeInsets.symmetric(horizontal: 20),
-              child: FeatureButton(title: 'Open video', icon: Icons.video_library_rounded, color: Theme.of(context).primaryColor, onTap: _pickVideo)//
-          )
-      );
+        body = Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: FeatureButton(label: 'Open video', icon: Icons.video_library_rounded, color: Theme.of(context).primaryColor, onTap: _pickVideo), //
+          ),
+        );
       case CutPageState.loadingVideo:
         body = const Center(
           child: Column(
@@ -645,7 +650,7 @@ class _CutPageState extends State<CutPage> {
           children: [
             ConstrainedVideoPlayer(controller: _videoPlayerController!, maxHeight: 245),
             _buildVideoControls(),
-            if (_generatingThumbnails != null)_buildTimelineStripe(context),
+            if (_generatingThumbnails != null) _buildTimelineStripe(context),
             _buildSegmentDefinitionControls(),
             const Divider(),
             Expanded(child: _buildSelectedSegmentsList()),
@@ -667,20 +672,26 @@ class _CutPageState extends State<CutPage> {
         );
       case CutPageState.exporting:
         body = Center(
-          child: Column(
+          child: Padding(padding: EdgeInsets.all(16), child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
+              LinearProgressIndicator(value: _progress),
+              SizedBox(height: 8),
               Text(_exportProgressMessage.isNotEmpty ? _exportProgressMessage : "Exporting... Please wait."), //
+              SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () => {},
+                style: ElevatedButton.styleFrom(surfaceTintColor: Colors.red),
+                child: const Text('Cancel export'), //
+              ),
             ],
-          ),
+          )),
         );
     }
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         title: const Text('Cut Video'), //
       ),
@@ -816,7 +827,13 @@ class _CutPageState extends State<CutPage> {
               final bool isFocusedSegment = _currentlyEditingSegment?.id == segment.id;
 
               List<Widget> segmentAndHandles = [
-                Positioned(left: leftPx.isNaN || leftPx.isInfinite || leftPx < 0 ? 0 : leftPx, top: 0, bottom: 20, width: widthPx.isNaN || widthPx.isInfinite || widthPx < 0 ? 0 : widthPx.clamp(0, currentContentWidth - leftPx), child: Container(decoration: BoxDecoration(color: isFocusedSegment ? Colors.yellow.withOpacity(0.45) : Colors.green.withOpacity(0.55), border: Border.all(color: isFocusedSegment ? Colors.yellowAccent.shade700 : Colors.lightGreenAccent.withOpacity(0.7), width: isFocusedSegment ? 2.5 : 1.5), borderRadius: BorderRadius.circular(2)))),
+                Positioned(
+                  left: leftPx.isNaN || leftPx.isInfinite || leftPx < 0 ? 0 : leftPx,
+                  top: 0,
+                  bottom: 20,
+                  width: widthPx.isNaN || widthPx.isInfinite || widthPx < 0 ? 0 : widthPx.clamp(0, currentContentWidth - leftPx),
+                  child: Container(decoration: BoxDecoration(color: isFocusedSegment ? Colors.yellow.withOpacity(0.45) : Colors.green.withOpacity(0.55), border: Border.all(color: isFocusedSegment ? Colors.yellowAccent.shade700 : Colors.lightGreenAccent.withOpacity(0.7), width: isFocusedSegment ? 2.5 : 1.5), borderRadius: BorderRadius.circular(2))),
+                ),
                 Positioned(
                   left: (leftPx - _handleTouchWidth / 2).clamp(0.0, currentContentWidth - _handleTouchWidth),
                   top: 0,
@@ -862,7 +879,12 @@ class _CutPageState extends State<CutPage> {
                       });
                       _showFeedback('Segment start adjusted.');
                     },
-                    child: Container(width: _handleTouchWidth, height: _timelineHeight - 20, color: Colors.transparent, child: Center(child: Container(width: _handleVisibleWidth, height: _timelineHeight - 20, decoration: BoxDecoration(color: Colors.blueGrey.withOpacity(0.7), borderRadius: const BorderRadius.only(topLeft: Radius.circular(3), bottomLeft: Radius.circular(3)), border: Border.all(color: Colors.white.withOpacity(0.8))), child: const Icon(Icons.drag_indicator, size: 10, color: Colors.white70)))),
+                    child: Container(
+                      width: _handleTouchWidth,
+                      height: _timelineHeight - 20,
+                      color: Colors.transparent,
+                      child: Center(child: Container(width: _handleVisibleWidth, height: _timelineHeight - 20, decoration: BoxDecoration(color: Colors.blueGrey.withOpacity(0.7), borderRadius: const BorderRadius.only(topLeft: Radius.circular(3), bottomLeft: Radius.circular(3)), border: Border.all(color: Colors.white.withOpacity(0.8))), child: const Icon(Icons.drag_indicator, size: 10, color: Colors.white70))),
+                    ),
                   ),
                 ),
                 Positioned(
@@ -909,7 +931,12 @@ class _CutPageState extends State<CutPage> {
                       });
                       _showFeedback('Segment end adjusted.');
                     },
-                    child: Container(width: _handleTouchWidth, height: _timelineHeight - 20, color: Colors.transparent, child: Center(child: Container(width: _handleVisibleWidth, height: _timelineHeight - 20, decoration: BoxDecoration(color: Colors.blueGrey.withOpacity(0.7), borderRadius: const BorderRadius.only(topRight: Radius.circular(3), bottomRight: Radius.circular(3)), border: Border.all(color: Colors.white.withOpacity(0.8))), child: const Icon(Icons.drag_indicator, size: 10, color: Colors.white70)))),
+                    child: Container(
+                      width: _handleTouchWidth,
+                      height: _timelineHeight - 20,
+                      color: Colors.transparent,
+                      child: Center(child: Container(width: _handleVisibleWidth, height: _timelineHeight - 20, decoration: BoxDecoration(color: Colors.blueGrey.withOpacity(0.7), borderRadius: const BorderRadius.only(topRight: Radius.circular(3), bottomRight: Radius.circular(3)), border: Border.all(color: Colors.white.withOpacity(0.8))), child: const Icon(Icons.drag_indicator, size: 10, color: Colors.white70))),
+                    ),
                   ),
                 ),
               ];
@@ -919,7 +946,13 @@ class _CutPageState extends State<CutPage> {
             .toList(),
 
         if (_currentSegmentStartMarker != null && _currentSegmentEndMarker != null && _videoDuration.inMilliseconds > 0 && _currentlyEditingSegment == null)
-          Positioned(left: (_currentSegmentStartMarker!.inMilliseconds / _videoDuration.inMilliseconds) * currentContentWidth, top: 0, bottom: 20, width: ((_currentSegmentEndMarker!.inMilliseconds - _currentSegmentStartMarker!.inMilliseconds) / _videoDuration.inMilliseconds) * currentContentWidth, child: Container(decoration: BoxDecoration(color: Colors.orange.withOpacity(0.35), border: Border.all(color: Colors.orangeAccent.withOpacity(0.6), width: 1.5, style: BorderStyle.solid), borderRadius: BorderRadius.circular(2))))
+          Positioned(
+            left: (_currentSegmentStartMarker!.inMilliseconds / _videoDuration.inMilliseconds) * currentContentWidth,
+            top: 0,
+            bottom: 20,
+            width: ((_currentSegmentEndMarker!.inMilliseconds - _currentSegmentStartMarker!.inMilliseconds) / _videoDuration.inMilliseconds) * currentContentWidth,
+            child: Container(decoration: BoxDecoration(color: Colors.orange.withOpacity(0.35), border: Border.all(color: Colors.orangeAccent.withOpacity(0.6), width: 1.5, style: BorderStyle.solid), borderRadius: BorderRadius.circular(2))),
+          )
         else if (_currentSegmentStartMarker != null && _videoDuration.inMilliseconds > 0 && _currentlyEditingSegment == null)
           Positioned(left: (_currentSegmentStartMarker!.inMilliseconds / _videoDuration.inMilliseconds) * currentContentWidth - 1, top: 0, bottom: 20, width: 3, child: Container(decoration: BoxDecoration(color: Colors.orangeAccent, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, spreadRadius: 1)]))),
         if (_currentSegmentEndMarker != null && _currentSegmentStartMarker == null && _videoDuration.inMilliseconds > 0 && _currentlyEditingSegment == null) Positioned(left: (_currentSegmentEndMarker!.inMilliseconds / _videoDuration.inMilliseconds) * currentContentWidth - 1, top: 0, bottom: 20, width: 3, child: Container(decoration: BoxDecoration(color: Colors.orangeAccent, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 2, spreadRadius: 1)]))),
@@ -933,7 +966,7 @@ class _CutPageState extends State<CutPage> {
 
       return Container(
         height: _timelineHeight,
-        margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
         color: Colors.grey.shade800,
         child: SingleChildScrollView(
           controller: _timelineScrollController,
@@ -968,8 +1001,16 @@ class _CutPageState extends State<CutPage> {
           ElevatedButton.icon(icon: const Icon(Icons.first_page_rounded), label: Text(_currentlyEditingSegment != null ? 'Edit Start' : (_currentSegmentStartMarker == null ? 'Set Start' : 'Start: ${_formatDuration(_currentSegmentStartMarker!)}')), onPressed: _setSegmentStart, style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[300])),
           ElevatedButton.icon(icon: const Icon(Icons.last_page_rounded), label: Text(_currentlyEditingSegment != null ? 'Edit End' : (_currentSegmentEndMarker == null ? 'Set End' : 'End: ${_formatDuration(_currentSegmentEndMarker!)}')), onPressed: _setSegmentEnd, style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[600])),
           // Zoom Controls Moved Here
-          IconButton(icon: const Icon(Icons.zoom_out), tooltip: 'Zoom Out Timeline', onPressed: _zoomOut),
-          IconButton(icon: const Icon(Icons.zoom_in), tooltip: 'Zoom In Timeline', onPressed: _zoomIn),
+          IconButton(
+            icon: const Icon(Icons.zoom_out),
+            tooltip: 'Zoom Out Timeline',
+            onPressed: _zoomOut, //
+          ),
+          IconButton(
+            icon: const Icon(Icons.zoom_in),
+            tooltip: 'Zoom In Timeline',
+            onPressed: _zoomIn, //
+          ),
           if (canClearNewSegmentMarkers) TextButton.icon(icon: const Icon(Icons.clear), label: const Text('Clear New Markers'), onPressed: _clearNewSegmentMarkers),
         ],
       ),

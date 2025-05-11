@@ -11,28 +11,35 @@ class StartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('VidVidVidApp')),
+      appBar: AppBar(
+          title: Text('VidVidVid App'),
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,//
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Icon(Icons.video_call, size: 50),
+            const Text('Choose your task', style: TextStyle(fontSize: 22)),
+            SizedBox(height: 20),
             FeatureButton(
-              title: 'Cut Video',
+              label: 'Cut Video',
               icon: Icons.content_cut,
               color: Colors.deepPurple,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CutPage())), //
             ),
             SizedBox(height: 24),
             FeatureButton(
-              title: 'Merge Videos',
+              label: 'Merge Videos',
               icon: Icons.video_call,
               color: Colors.teal,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MergePage())), //
             ),
             SizedBox(height: 24),
             FeatureButton(
-              title: 'Split Video',
+              label: 'Split Video',
               icon: Icons.call_split,
               color: Colors.deepOrangeAccent,
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SplitPage())), //

@@ -15,7 +15,7 @@ class VidVidVidApp extends StatelessWidget {
         useMaterial3: true,
         // Define the color scheme from a seed color
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Color.fromARGB(244, 105, 76, 0), // Your primary seed color
+          seedColor: Colors.blueAccent.shade200, // Your primary seed color
           // You can optionally override specific colors in the generated scheme
           // primary: Colors.deepPurple, // If you want to be very specific
           // secondary: Colors.amber,

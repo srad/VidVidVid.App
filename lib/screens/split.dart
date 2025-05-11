@@ -4,6 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:easy_video_editor/easy_video_editor.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
+import 'package:vidvidvid/utils/file_utils.dart';
+import 'package:vidvidvid/widgets/constrained_video_player.dart';
+import 'package:vidvidvid/widgets/feature_button.dart';
 
 class SplitPage extends StatefulWidget {
   const SplitPage({super.key});
@@ -23,9 +26,9 @@ class _SplitPageState extends State<SplitPage> {
   bool isSeeking = false;
 
   Future<void> pickVideo() async {
-    final picked = await FilePicker.platform.pickFiles(type: FileType.video);
-    if (picked?.files.single.path != null) {
-      video = File(picked!.files.single.path!);
+    final file = await FileUtils.pickVideo(context);
+    if (file != null) {
+      video = File(file.path);
       _videoController?.dispose();
       _videoController = VideoPlayerController.file(video!)
         ..initialize().then((_) {
@@ -104,32 +107,34 @@ class _SplitPageState extends State<SplitPage> {
   Widget build(BuildContext context) {
     final maxSeconds = (videoDurationMs / 1000).floorToDouble();
     return Scaffold(
-      appBar: AppBar(title: Text("Split Video")),
+      appBar: AppBar(
+          title: Text("Split Video"),
+        backgroundColor: Colors.deepOrangeAccent,
+        foregroundColor: Colors.white,//
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(0),
         child: Column(
           children: [
-            _iconAction(
-              icon: Icons.video_library,
-              label: 'Select Video',
-              color: Colors.orange,
-              onTap: pickVideo,
-            ),
+        Center(
+        child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: FeatureButton(label: 'Open video', icon: Icons.video_library_rounded, color: Theme.of(context).primaryColor, onTap: pickVideo), //
+      ),
+    ),
             if (video != null && _videoController != null && _videoController!.value.isInitialized) ...[
-              SizedBox(height: 20),
+              SizedBox(height: 0),
               AspectRatio(
                 aspectRatio: _videoController!.value.aspectRatio,
                 child: Stack(
                   children: [
-                    VideoPlayer(_videoController!),
-                    Positioned(
-                      bottom: 8,
-                      right: 8,
+                    Center(child: ConstrainedVideoPlayer(controller: _videoController!, maxHeight: 230)),
+                    Center(
                       child: IconButton(
                         icon: Icon(
                           _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
                           color: Colors.white,
-                          size: 30,
+                          size:60,
                         ),
                         onPressed: () {
                           setState(() {
@@ -158,12 +163,13 @@ class _SplitPageState extends State<SplitPage> {
                   });
                 },
               ),
-              _iconAction(
+              Padding(padding: EdgeInsets.symmetric(horizontal: 16), child:
+              FeatureButton(
                 icon: Icons.call_split,
                 label: 'Split Video',
                 color: Colors.orange.shade700,
-                onTap: splitVideo,
-              ),
+                onTap: splitVideo,//
+              )),
             ],
             if (progress > 0 && progress < 1)
               Padding(
@@ -171,34 +177,7 @@ class _SplitPageState extends State<SplitPage> {
                 child: LinearProgressIndicator(value: progress),
               ),
             SizedBox(height: 16),
-            Text(status, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _iconAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: color, width: 2),
-          borderRadius: BorderRadius.circular(16),
-          color: color.withOpacity(0.1),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 40),
-            SizedBox(width: 20),
-            Text(label, style: TextStyle(fontSize: 20, color: color)),
+            Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text(status, textAlign: TextAlign.start)),
           ],
         ),
       ),

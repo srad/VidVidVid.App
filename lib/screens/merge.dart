@@ -3,8 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_video_editor/easy_video_editor.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vidvidvid/utils/file_utils.dart';
+import 'package:vidvidvid/widgets/feature_button.dart';
+import 'package:vidvidvid/widgets/video_list.dart';
 
 class MergePage extends StatefulWidget {
+  const MergePage({super.key});
+
   @override
   _MergePageState createState() => _MergePageState();
 }
@@ -14,16 +19,18 @@ class _MergePageState extends State<MergePage> {
   String status = '';
   double progress = 0.0;
   bool isMerging = false;
-  late VideoEditorBuilder _editor;  // To keep track of editor instance
+  late VideoEditorBuilder _editor; // To keep track of editor instance
+  int? _currentVideoSelection;
 
   // Variable to cancel the merge operation
   late Future<void> mergeOperation;
 
   Future<void> pickVideos() async {
-    final picked = await FilePicker.platform.pickFiles(type: FileType.video, allowMultiple: true);
-    if (picked?.files.isNotEmpty ?? false) {
+    //final picked = await FilePicker.platform.pickFiles(type: FileType.video, allowMultiple: true);
+    final files = await FileUtils.pickVideos(context, 20);
+    if (files != null && files.isNotEmpty) {
       setState(() {
-        videos = picked!.files.map((file) => File(file.path!)).toList();
+        videos = files;
         status = "Selected ${videos.length} video(s)";
       });
     }
@@ -40,7 +47,8 @@ class _MergePageState extends State<MergePage> {
     setState(() {
       isMerging = true;
       progress = 0.0;
-      status = "Merging videos...";
+      status = "";
+      //status = "Merging videos...";
     });
 
     // Initialize VideoEditorBuilder with the first video
@@ -54,32 +62,35 @@ class _MergePageState extends State<MergePage> {
     final outputPath = '$outputDir/merged_video.mp4';
 
     // Start the merge operation and handle cancellation
-    mergeOperation = _editor.export(
-      outputPath: outputPath,
-      onProgress: (p) {
-        if (mounted) {
+    mergeOperation = _editor
+        .export(
+          outputPath: outputPath,
+          onProgress: (p) {
+            if (mounted) {
+              setState(() {
+                progress = p;
+              });
+            }
+          },
+        )
+        .then((_) {
           setState(() {
-            progress = p;
+            status = "✅ Merge complete: $outputPath";
+            isMerging = false;
           });
-        }
-      },
-    ).then((_) {
-      setState(() {
-        status = "✅ Merge complete: $outputPath";
-        isMerging = false;
-      });
-    }).catchError((e) {
-      setState(() {
-        status = "❌ Merge failed: $e";
-        isMerging = false;
-      });
-    });
+        })
+        .catchError((e) {
+          setState(() {
+            status = "❌ Merge failed: $e";
+            isMerging = false;
+          });
+        });
   }
 
   Future cancelMerge() async {
     if (isMerging) {
       // Cancel the operation by disposing of the editor and stopping the task
-      //await _editor.cancel();
+      // TODO: await _editor.cancel();
       setState(() {
         status = "❌ Merge canceled.";
         isMerging = false;
@@ -96,74 +107,67 @@ class _MergePageState extends State<MergePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Merge Videos")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            _iconAction(
-              icon: Icons.video_library,
-              label: 'Select Videos',
-              color: Colors.orange,
-              onTap: pickVideos,
-            ),
-            SizedBox(height: 16),
-            if (videos.isNotEmpty) ...[
-              Text('Selected ${videos.length} video(s)'),
-              SizedBox(height: 10),
-              _iconAction(
-                icon: Icons.folder_open,
-                label: 'Select Destination Folder',
-                color: Colors.green,
-                onTap: selectDestinationFolder,
-              ),
-            ],
-            if (isMerging) ...[
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: LinearProgressIndicator(value: progress),
-              ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: cancelMerge,
-                child: Text('Cancel Merge'),
-                style: ElevatedButton.styleFrom(surfaceTintColor: Colors.red),
-              ),
-            ],
-            if (!isMerging && progress == 0.0)
-              SizedBox(height: 16),
-            Text(status, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
+    Widget? body;
 
-  Widget _iconAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: color, width: 2),
-          borderRadius: BorderRadius.circular(16),
-          color: color.withOpacity(0.1),
-        ),
-        child: Row(
+    if (isMerging) {
+      body = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Padding(padding: const EdgeInsets.all(16), child: LinearProgressIndicator(value: progress)),
+          ElevatedButton(
+            onPressed: cancelMerge,
+            style: ElevatedButton.styleFrom(surfaceTintColor: Colors.red),
+            child: const Text('Cancel merge'), //
+          ),
+        ],
+      );
+    } else {
+      body = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 40),
-            SizedBox(width: 20),
-            Text(label, style: TextStyle(fontSize: 20, color: color)),
+          Center(
+            child: FeatureButton(
+              label: 'Open video',
+              icon: Icons.video_library_rounded,
+              color: Theme.of(context).primaryColor,
+              onTap: pickVideos, //
+            ), //
+          ),
+          SizedBox(height: 8),
+          if (videos.isNotEmpty) ...[
+            //Text('Selected ${videos.length} video(s)'),
+            //SizedBox(height: 10),
+            FeatureButton(
+              label: 'Select Destination Folder',
+              icon: Icons.folder_open,
+              color: Colors.green.shade800,
+              onTap: selectDestinationFolder, //
+            ),
+            Divider(),
+            Expanded(child: VideoList(videos: videos, onRemove: (index) {
+              setState(() {
+                videos.removeAt(index);
+                status = "Selected ${videos.length} video(s)";
+              });
+            })),
+            if (progress == 0.0) ...[
+              SizedBox(height: 16),
+              Text(status, textAlign: TextAlign.center), //
+            ],
           ],
-        ),
+        ],
+        ));
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+        title: Text("Merge Videos"), //
       ),
+      body: Padding(padding: EdgeInsets.all(8), child: body),
     );
   }
 }
